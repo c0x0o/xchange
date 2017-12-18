@@ -1,7 +1,5 @@
 #include "base/ThreadPool.h"
 
-#include <iostream>
-
 using xchange::threadPool::Task;
 using xchange::threadPool::Worker;
 using xchange::threadPool::WorkerMain;
