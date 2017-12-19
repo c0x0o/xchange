@@ -9,18 +9,22 @@ using xchange::thread::ThreadEvent;
 using std::cout;
 using std::endl;
 
-void * threadFunc(void *arg) {
+void * threadFunc(void *) {
     long int i = 1;
 
     return (void *)i;
 }
 
-void onStart(xchange::thread::ThreadEvent e, void *arg) {
+void onStart(xchange::thread::ThreadEvent, void *) {
     cout << "[" << currentThread.threadName() << "] Thread " << currentThread.tid() << " starting " << endl;
 }
 
-void onComplete(xchange::thread::ThreadEvent e, void *arg) {
+void onComplete(xchange::thread::ThreadEvent, void *) {
     cout << "main id: " << currentThread.mainid() << endl;
+}
+
+void onCompleteAgain(xchange::thread::ThreadEvent, void *) {
+    cout << "main id: " << currentThread.mainid() << " again" << endl;
 }
 
 int main(void) {
@@ -28,6 +32,7 @@ int main(void) {
 
     a.on(xchange::thread::INIT, onStart);
     a.on(xchange::thread::COMPLETE, onComplete);
+    a.on(xchange::thread::COMPLETE, onCompleteAgain);
     b.on(xchange::thread::INIT, onStart);
     b.on(xchange::thread::COMPLETE, onComplete);
 
