@@ -30,8 +30,8 @@ namespace io {
 
             uint8_t get(uint64_t pos) {return data_[pos];};
 
-            void write(uint64_t pos, Buffer & buff) {
-                memcpy(data_+pos, buff.data_, buff.size_);
+            void write(uint64_t pos, const uint8_t* data, uint64_t len) {
+                memcpy(data_+pos, data, len);
             }
 
             Buffer& read(uint64_t pos, uint64_t len) {
