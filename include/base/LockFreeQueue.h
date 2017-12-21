@@ -7,7 +7,7 @@
 #include <atomic>
 #include <stdexcept>
 
-#define round_u32(n) ({uint32_t i = 1; while (i < n)i<<=1;i;})
+#define round_u64(n) ({uint64_t i = 1; while (i < n)i<<=1;i;})
 #define mod(a,b) (a&(b-1))
 
 namespace xchange {
@@ -15,9 +15,9 @@ namespace xchange {
     template<typename T>
     class LockFreeQueue {
         public:
-            LockFreeQueue(uint32_t max)
+            LockFreeQueue(uint64_t max)
             {
-                maxSize_ = round_u32(max);
+                maxSize_ = round_u64(max);
                 queue_ = new T[maxSize_];
                 currentTail_.store(0, std::memory_order_relaxed);
                 head_.store(0, std::memory_order_relaxed);
@@ -34,12 +34,12 @@ namespace xchange {
                 delete queue_;
             }
 
-            uint32_t size() const {return currentTail_.load(std::memory_order_relaxed) - head_.load(std::memory_order_relaxed);}
+            uint64_t size() const {return currentTail_.load(std::memory_order_relaxed) - head_.load(std::memory_order_relaxed);}
             bool empty() const {return currentTail_.load(std::memory_order_relaxed) == head_.load(std::memory_order_relaxed);}
 
             T shift() {
-                uint32_t readIndex;
-                uint32_t maxReadIndex;
+                uint64_t readIndex;
+                uint64_t maxReadIndex;
 
                 do {
                     readIndex = head_.load(std::memory_order_relaxed);
@@ -56,8 +56,8 @@ namespace xchange {
             };
 
             void push(T val) {
-                uint32_t readIndex;
-                uint32_t writeIndex;
+                uint64_t readIndex;
+                uint64_t writeIndex;
 
                 do {
                     readIndex = head_.load(std::memory_order_relaxed);
@@ -81,8 +81,8 @@ namespace xchange {
 
         private:
             T *queue_;
-            uint32_t maxSize_;
-            std::atomic_uint32_t currentTail_, head_, tail_;
+            uint64_t maxSize_;
+            std::atomic_uint64_t currentTail_, head_, tail_;
     };
 }
 

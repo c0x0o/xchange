@@ -36,7 +36,7 @@ void Task::run() {
     status_++;
 }
 
-Worker::Worker(uint32_t queueSize, ThreadPool & parent)
+Worker::Worker(uint64_t queueSize, ThreadPool & parent)
     : running_(false),
     currentTask_(NULL),
     parent_(parent),
@@ -132,7 +132,7 @@ void *xchange::threadPool::WorkerMain(void *arg) {
     return NULL;
 }
 
-ThreadPool::ThreadPool(uint32_t numOfWorker, uint32_t workerQueueSize)
+ThreadPool::ThreadPool(uint64_t numOfWorker, uint64_t workerQueueSize)
     : running_(true)
 {
     sigset_t sigset;
@@ -142,7 +142,7 @@ ThreadPool::ThreadPool(uint32_t numOfWorker, uint32_t workerQueueSize)
     sigaddset(&sigset, SIGKILL);
     pthread_sigmask(SIG_BLOCK, &sigset, NULL);
 
-    for (uint32_t i = 0; i < numOfWorker; i++) {
+    for (uint64_t i = 0; i < numOfWorker; i++) {
         Worker * worker = new Worker(workerQueueSize, *this);
 
         workers_.push_back(worker);
@@ -160,10 +160,10 @@ Task::id ThreadPool::execute(ThreadPool::Routine func, void *arg) {
     std::vector<Worker *>::iterator nextWorker;
 
     // balance load
-    uint32_t min = 4294967295;
+    uint64_t min = 4294967295;
     for (std::vector<Worker *>::iterator i = workers_.begin(); i != workers_.end(); i++) {
         Worker & worker = **i;
-        uint32_t queueSize = worker.taskQueueSize();
+        uint64_t queueSize = worker.taskQueueSize();
 
         if (queueSize < min || (queueSize == min && !worker.isRunning())) {
             nextWorker = i;

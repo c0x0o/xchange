@@ -49,13 +49,13 @@ namespace xchange {
 
         class Worker: public xchange::EventEmitter<WorkerEvent> {
             public:
-                Worker(uint32_t queueSize, ThreadPool &parent);
+                Worker(uint64_t queueSize, ThreadPool &parent);
                 Worker(const Worker & oldWorker);
                 ~Worker();
 
                 bool isRunning() const {return running_;};
                 bool isAlive() {return 0 == thread_.kill(0);};
-                uint32_t taskQueueSize() const {return tasks_.size();}
+                uint64_t taskQueueSize() const {return tasks_.size();}
                 Task *currentTask() const {return currentTask_;};
 
                 int addTask(Task *);
@@ -74,11 +74,11 @@ namespace xchange {
             public:
                 typedef xchange::thread::Thread::routine Routine;
 
-                ThreadPool(uint32_t numOfWorker = 10, uint32_t WorkerQueueSize = 64);
+                ThreadPool(uint64_t numOfWorker = 10, uint64_t WorkerQueueSize = 64);
                 ~ThreadPool();
 
                 bool isRunning() const {return running_;};
-                uint32_t size() const {return workers_.size();};
+                uint64_t size() const {return workers_.size();};
 
                 Task::id execute(Routine, void *);
                 void maintain();
