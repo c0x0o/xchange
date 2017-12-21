@@ -27,7 +27,7 @@ namespace xchange {
                 typedef uint64_t id;
 
                 Task(fn, void *arg = NULL);
-                Task(Task & oldTask);
+                Task(const Task & oldTask);
                 ~Task();
 
                 id getId() const {return taskId_;};
@@ -50,7 +50,7 @@ namespace xchange {
         class Worker: public xchange::EventEmitter<WorkerEvent> {
             public:
                 Worker(uint32_t queueSize, ThreadPool &parent);
-                Worker(Worker & oldWorker);
+                Worker(const Worker & oldWorker);
                 ~Worker();
 
                 bool isRunning() const {return running_;};

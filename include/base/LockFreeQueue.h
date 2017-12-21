@@ -23,7 +23,7 @@ namespace xchange {
                 head_.store(0, std::memory_order_relaxed);
                 tail_.store(0, std::memory_order_relaxed);
             }
-            LockFreeQueue(LockFreeQueue<T> & oldQueue) {
+            LockFreeQueue(const LockFreeQueue<T> & oldQueue) {
                 maxSize_ = oldQueue.maxSize_;
                 memcpy(&queue_, &oldQueue.queue_, maxSize_);
                 currentTail_.store(oldQueue.currentTail_.load(std::memory_order_relaxed), std::memory_order_relaxed);

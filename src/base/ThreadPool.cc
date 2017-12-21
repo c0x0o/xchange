@@ -18,7 +18,7 @@ Task::Task(Task::fn handler, void *arg)
 }
 std::atomic_uint64_t Task::usableId_(1);
 
-Task::Task(Task & oldTask)
+Task::Task(const Task & oldTask)
     : taskId_(usableId_.load(std::memory_order_relaxed)),
     status_(0),
     main_(oldTask.main_),
@@ -47,7 +47,7 @@ Worker::Worker(uint32_t queueSize, ThreadPool & parent)
     EventEmitter::on(WORKER_INIT, NULL);
 }
 
-Worker::Worker(Worker & oldWorker)
+Worker::Worker(const Worker & oldWorker)
     : running_(false),
     currentTask_(NULL),
     parent_(oldWorker.parent_),

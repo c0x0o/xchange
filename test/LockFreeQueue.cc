@@ -1,6 +1,6 @@
 #include "base/LockFreeQueue.h"
 
-#include<unistd.h>
+#include <unistd.h>
 
 #include <cmath>
 #include <iostream>
@@ -15,7 +15,7 @@ using xchange::thread::currentThread;
 LockFreeQueue<int> q(10000);
 std::atomic_uint64_t i;
 
-void * pushData(void *arg) {
+void * pushData(void *) {
     while (1) {
         if (i.load() > 10000000) {
             break;
@@ -32,7 +32,7 @@ void * pushData(void *arg) {
     return nullptr;
 }
 
-void * popData(void *arg) {
+void * popData(void *) {
     uint64_t i = 0;
 
     while (1) {
@@ -54,7 +54,7 @@ void * popData(void *arg) {
     return nullptr;
 }
 
-void onCom(xchange::thread::ThreadEvent e, void *arg) {
+void onCom(xchange::thread::ThreadEvent, void *) {
     std::cout << "Terminated " << xchange::thread::currentThread.threadName() << std::endl;
 }
 
