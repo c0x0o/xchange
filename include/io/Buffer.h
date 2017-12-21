@@ -42,6 +42,7 @@ namespace io {
 
             uint64_t size() const {return size_;};
             const uint8_t *data() const {return data_;};
+            uint8_t *expose() {return data_;};
 
             friend std::ostream & operator<<(std::ostream &out, Buffer &buff) {
                 return out << buff.data();
