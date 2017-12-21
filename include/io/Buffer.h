@@ -45,6 +45,10 @@ namespace io {
             uint8_t *expose() {return data_;};
 
             friend std::ostream & operator<<(std::ostream &out, Buffer &buff) {
+                if (buff.size_ == 0) {
+                    return out << "(empty Buffer)";
+                }
+
                 return out << buff.data();
             }
         private:
