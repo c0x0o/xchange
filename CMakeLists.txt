@@ -5,11 +5,14 @@ set(CMAKE_BUILD_TYPE debug)
 
 include_directories(include)
 
-set(BASE_SOURCE ./src/base/Thread.cc ./src/base/ThreadPool.cc)
+set(THREAD_SOURCE ./src/base/Thread.cc)
+set(THREADPOOL_SOURCE ./src/base/Thread.cc ./src/base/ThreadPool.cc)
+set(BUFFER_SOURCE ./src/io/Buffer.cc)
 
-add_executable(threadTest ${BASE_SOURCE} ./test/thread.cc)
-add_executable(queueTest ${BASE_SOURCE} ./test/LockFreeQueue.cc)
-add_executable(threadPoolTest ${BASE_SOURCE} ./test/threadPool.cc)
+add_executable(threadTest ${THREAD_SOURCE} ./test/thread.cc)
+add_executable(queueTest ${THREAD_SOURCE} ./test/LockFreeQueue.cc)
+add_executable(threadPoolTest ${THREADPOOL_SOURCE} ./test/threadPool.cc)
+add_executable(bufferTest ${BUFFER_SOURCE} ./test/buffer.cc)
 
 target_link_libraries(threadTest pthread)
 target_link_libraries(queueTest pthread)
