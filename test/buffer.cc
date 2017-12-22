@@ -11,7 +11,8 @@ int main(void) {
     Buffer a("this is a buffer");
 
     // char[], Buffer, string and rvalue are all ok
-    Buffer & temp = a+" hi"+Buffer(" greate one!") + std::string(" Nicely done!");
+    // here will use 'move' rather than 'copy constructor'
+    Buffer temp = a+" hi"+Buffer(" greate one!") + std::string(" Nicely done!");
 
     cout << temp << endl;
 

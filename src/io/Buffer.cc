@@ -46,13 +46,13 @@ Buffer::~Buffer() {
     }
 }
 
-Buffer& Buffer::operator+(const Buffer &buff) {
-    Buffer *temp = new Buffer(buff.size_ + size_);
+Buffer Buffer::operator+(const Buffer &buff) {
+    Buffer temp(buff.size_ + size_);
 
-    memcpy(temp->data_, data_, size_);
-    memcpy(temp->data_+size_, buff.data_, buff.size_);
+    memcpy(temp.data_, data_, size_);
+    memcpy(temp.data_+size_, buff.data_, buff.size_);
 
-    return *temp;
+    return temp;
 }
 
 Buffer& Buffer::operator+=(const Buffer &buff) {
