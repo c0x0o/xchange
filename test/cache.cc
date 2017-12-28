@@ -16,14 +16,14 @@ int main(void) {
     cache.write("1234567890");
 
     // write will failed, return non-zero
-    if (cache.write("123")!=0) {
+    if (cache.write("123") != 0) {
         cout << "write failed" << endl;
     };
 
     cout << cache.read(5) << endl;
 
     // 'buff' will be destroy atomatically after the context is end
-    Buffer & buff = cache.read(5);
+    Buffer buff = cache.read(5);
 
     cout << buff << endl;
 

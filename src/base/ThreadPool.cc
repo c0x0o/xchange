@@ -75,7 +75,7 @@ Worker::~Worker() {
         try {
             task = tasks_.shift();
             delete task;
-        } catch (std::out_of_range e) {
+        } catch (const std::out_of_range &e) {
             break;
         }
     }
@@ -89,7 +89,7 @@ int Worker::addTask(Task * task) {
     try {
         tasks_.push(task);
         thread_.kill(SIGUSR1);
-    } catch (std::overflow_error e) {
+    } catch (const std::overflow_error &e) {
         return 1;
     }
 

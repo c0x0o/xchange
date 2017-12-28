@@ -13,7 +13,7 @@ namespace io {
 
     class Buffer {
         public:
-            explicit Buffer(uint64_t size = 0): data_(new uint8_t[size]), size_(size){};
+            explicit Buffer(uint64_t size = 0): data_(size == 0 ? NULL : new uint8_t[size]), size_(size){};
             Buffer(const Buffer & buff);
             Buffer(Buffer && buff);
             Buffer(const char *str);
@@ -22,13 +22,11 @@ namespace io {
             Buffer(const std::string & str);
             ~Buffer();
 
-            uint8_t operator[](uint64_t pos) {return *(data_+pos);};
-
-            Buffer operator+(const Buffer &buff);
-
+            uint8_t operator[](uint64_t pos) const {return *(data_+pos);};
+            Buffer operator+(const Buffer &buff) const;
             Buffer& operator+=(const Buffer &buff);
-
-            uint8_t get(uint64_t pos) {return data_[pos];};
+            uint8_t get(uint64_t pos) const {return data_[pos];};
+            Buffer slice(uint64_t pos, uint64_t len) const;
 
 
             void write(uint64_t pos, const Buffer &buff) {
@@ -38,7 +36,7 @@ namespace io {
                 memcpy(data_+pos, data, len);
             }
 
-            Buffer read(uint64_t pos, uint64_t len) {
+            Buffer read(uint64_t pos, uint64_t len) const {
                 Buffer temp(data_+pos, len);
                 return temp;
             }
@@ -54,7 +52,19 @@ namespace io {
                     return out << "(empty Buffer)";
                 }
 
-                return out << buff.data();
+                out << buff.data();
+
+                return out;
+            }
+
+            friend std::ostream & operator<<(std::ostream &out, Buffer &&buff) {
+                if (buff.size_ == 0) {
+                    return out << "(empty Buffer)";
+                }
+
+                out << buff.data();
+
+                return out;
             }
         private:
             uint8_t *data_;
