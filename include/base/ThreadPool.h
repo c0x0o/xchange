@@ -11,7 +11,7 @@
 #include "design/Noncopyable.h"
 #include "base/Thread.h"
 #include "base/EventEmitter.h"
-#include "base/LockFreeQueue.h"
+#include "algorithm/LockFreeQueue.h"
 
 namespace xchange {
     namespace threadPool {
@@ -66,7 +66,7 @@ namespace xchange {
                 bool running_;
                 Task *currentTask_;
                 ThreadPool &parent_;
-                xchange::LockFreeQueue<Task *> tasks_;
+                xchange::algorithm::LockFreeQueue<Task *> tasks_;
                 xchange::thread::Thread thread_;
         };
 

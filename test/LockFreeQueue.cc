@@ -1,4 +1,4 @@
-#include "base/LockFreeQueue.h"
+#include "algorithm/LockFreeQueue.h"
 
 #include <unistd.h>
 
@@ -8,7 +8,7 @@
 
 #include "base/Thread.h"
 
-using xchange::LockFreeQueue;
+using xchange::algorithm::LockFreeQueue;
 using xchange::thread::Thread;
 using xchange::thread::currentThread;
 

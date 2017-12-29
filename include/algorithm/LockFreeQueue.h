@@ -12,6 +12,8 @@
 
 namespace xchange {
 
+namespace algorithm {
+
     template<typename T>
     class LockFreeQueue {
         public:
@@ -84,6 +86,11 @@ namespace xchange {
             uint64_t maxSize_;
             std::atomic_uint64_t currentTail_, head_, tail_;
     };
+
 }
+}
+
+#undef round_u64
+#undef mod
 
 #endif

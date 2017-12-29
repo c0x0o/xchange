@@ -5,7 +5,6 @@
 #include <vector>
 
 #include "base/EventEmitter.h"
-#include "algorithm/events.h"
 
 #ifndef NULL
 #define NULL 0
