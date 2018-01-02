@@ -179,6 +179,34 @@ namespace algorithm {
 
                 return result->value;
             }
+
+            Value findSmallest() {
+                Node *current = root_;
+
+                if (current == NULL) {
+                    throw std::out_of_range("Key not found");
+                }
+
+                while (current->left != NULL) {
+                    current = current->left;
+                }
+
+                return current->value;
+            }
+
+            Value findBiggest() {
+                Node *current = root_;
+
+                if (current == NULL) {
+                    throw std::out_of_range("Key not found");
+                }
+
+                while (current->right != NULL) {
+                    current = current->right;
+                }
+
+                return current->value;
+            }
         private:
             Node *root_;
             uint32_t length_;

@@ -14,7 +14,7 @@ xchange is a C++ infrastructure library including(current master branch):
 6. Condition
 7. Thread
 8. Thread Pool based on lock-free structure
-9. RedBlckTree
+9. RedBlackTree
 10. Buffer, Cache(ring buffer)
 11. Epoll interface
 
