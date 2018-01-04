@@ -63,6 +63,8 @@ namespace xchange {
                     mainid_ = pthread_self();
                     pthread_key_create(&tid_, NULL);
                     pthread_key_create(&threadName_, NULL);
+
+                    pthread_setspecific(tid_, &mainid_);
                 };
                 ~ThreadData() {
                     pthread_key_delete(tid_);

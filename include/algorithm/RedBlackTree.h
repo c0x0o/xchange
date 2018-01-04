@@ -58,7 +58,7 @@ namespace algorithm {
 
             uint32_t size() const {return length_;}
 
-            void each(void (*fn)(Value)) {
+            void each(void (*fn)(Value, Key)) {
                 std::vector<Node *> stack;
                 Node *current = root_;
 
@@ -70,7 +70,7 @@ namespace algorithm {
                         current = stack.back();
                         stack.pop_back();
 
-                        fn(current->value);
+                        fn(current->value, current->key);
 
                         current = current->right;
                     }
@@ -180,7 +180,7 @@ namespace algorithm {
                 return result->value;
             }
 
-            Value findSmallest() {
+            const struct Node& findSmallestPair() {
                 Node *current = root_;
 
                 if (current == NULL) {
@@ -191,10 +191,10 @@ namespace algorithm {
                     current = current->left;
                 }
 
-                return current->value;
+                return *current;
             }
 
-            Value findBiggest() {
+            const struct Node& findBiggestPair() {
                 Node *current = root_;
 
                 if (current == NULL) {
@@ -205,9 +205,9 @@ namespace algorithm {
                     current = current->right;
                 }
 
-                return current->value;
+                return *current;
             }
-        private:
+       private:
             Node *root_;
             uint32_t length_;
 

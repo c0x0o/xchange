@@ -3,14 +3,13 @@
 
 #include <pthread.h>
 #include <time.h>
-#include "design/Noncopyable.h"
-#include "base/types.h"
-#include "base/Mutex.h"
 
-using xchange::Mutex;
+#include "design/Noncopyable.h"
+#include "base/Mutex.h"
 
 namespace xchange {
 
+namespace base {
     class Condition : xchange::Noncopyable {
         public:
             Condition(Mutex &lock);
@@ -22,8 +21,9 @@ namespace xchange {
         private:
             pthread_cond_t cond_;
             pthread_condattr_t attr_;
-            Mutex & lock_;
+            xchange::base::Mutex & lock_;
     };
+}
 
 }
 

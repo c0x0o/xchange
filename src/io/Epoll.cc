@@ -198,7 +198,7 @@ Epoll::Epoll(uint64_t cacheSize, int maxEvent)
 
 Epoll::~Epoll() {
     ctx_.each(
-        [](EpollContext *ctx) {
+        [](EpollContext *ctx, int) {
             ctx->flush();
             delete ctx;
         }
@@ -315,7 +315,7 @@ void Epoll::tick() {
     }
     // 2. flush all data remained in readCache
     ctx_.each(
-        [](EpollContext *ctx) {
+        [](EpollContext *ctx, int) {
             ctx->flush();
         }
     );

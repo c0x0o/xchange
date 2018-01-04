@@ -107,7 +107,6 @@ void *xchange::threadPool::WorkerMain(void *arg) {
 
     sigemptyset(&set);
     sigaddset(&set, SIGUSR1);
-    sigaddset(&set, SIGKILL);
 
     while (1) {
         Task *task = NULL;
@@ -115,8 +114,6 @@ void *xchange::threadPool::WorkerMain(void *arg) {
             task = context->tasks_.shift();
         } catch (std::out_of_range e) {
             sigwait(&set, &sig);
-
-            if (sig == SIGKILL) break;
 
             continue;
         }
@@ -139,7 +136,6 @@ ThreadPool::ThreadPool(uint64_t numOfWorker, uint64_t workerQueueSize)
 
     sigemptyset(&sigset);
     sigaddset(&sigset, SIGUSR1);
-    sigaddset(&sigset, SIGKILL);
     pthread_sigmask(SIG_BLOCK, &sigset, NULL);
 
     for (uint64_t i = 0; i < numOfWorker; i++) {

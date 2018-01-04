@@ -20,7 +20,8 @@ int main() {
     map.insert(3, 3);
     map.insert(4, 4);
 
-    map.each([](int val)->void{cout << val << " ";});
+    // the second argument is the key
+    map.each([](int val, long int)->void{cout << val << " ";});
 
     cout << endl;
 

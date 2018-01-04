@@ -1,7 +1,7 @@
 #include "base/Condition.h"
 
-using xchange::Condition;
-using xchange::Mutex;
+using xchange::base::Condition;
+using xchange::base::Mutex;
 
 Condition::Condition(Mutex &mutex) : lock_(mutex) {
     pthread_condattr_init(&attr_);
@@ -23,8 +23,8 @@ int Condition::wait() {
 
 int Condition::waitFor(const double time) {
     struct timespec timer;
-    static const int64_t nsPerSeconds = 1e9;
-    int64_t nanoSeconds = static_cast<int64_t>(time * nsPerSeconds);
+    static const long nsPerSeconds = 1e9;
+    long nanoSeconds = static_cast<long>(time * nsPerSeconds);
     int ret;
 
     clock_gettime(CLOCK_REALTIME, &timer);

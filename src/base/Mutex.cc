@@ -1,6 +1,6 @@
 #include "base/Mutex.h"
 
-using xchange::Mutex;
+using xchange::base::Mutex;
 
 Mutex::Mutex() : isLocked_(false) {
     pthread_mutexattr_init(&attr_);
@@ -34,8 +34,4 @@ int Mutex::unlock() {
     }
 
     return ret;
-}
-
-pthread_mutex_t *Mutex::getRawMutex() {
-    return &lock_;
 }
