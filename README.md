@@ -17,6 +17,7 @@ xchange is a C++ infrastructure library including(current master branch):
 9. RedBlackTree
 10. Buffer, Cache(ring buffer)
 11. Epoll interface
+12. Timer/Timestamp
 
 This library is designed for such purposes:
 
@@ -39,5 +40,6 @@ xchange是一个我自己的c++基础设施，其中的一些思想和思路参�
 9. 红黑树
 10. IO常用的Buffer和Cache（循环缓冲区）封装
 11. 基于事件订阅/发布模型的Epoll接口，写JS的同学应该会感觉比较亲切
+12. 定时器和时间戳
 
 总之就是要实现一个使用方便、代码可读性强、易于理解的C++基础设施，后面还会添加网络操作和IO操作的特性，敬请期待。目前还没有来得及写详细的文档，有兴趣的同学可以看看头文件和test目录下的小例子。
