@@ -1,5 +1,5 @@
-#ifndef _IO_EPOLL_H_
-#define _IO_EPOLL_H_
+#ifndef _IO_MANAGER_H_
+#define _IO_MANAGER_H_
 
 #include <errno.h>
 #include <unistd.h>
@@ -19,26 +19,35 @@
 namespace xchange {
 
 namespace io {
-    enum EpollEvent {EPOLL_READ = 1, EPOLL_WRITE = 2, EPOLL_ERROR = 4, EPOLL_DISTROY = 100};
-    class EpollContext;
-    class Epoll;
+    enum IOEvent {IO_READ = 1, IO_WRITE = 2, IO_ERROR = 4, IO_DISTROY = 100};
+    class IOContext;
+    class IOManager;
 
-    class EpollContext {
+    class IOContext {
         public:
-            EpollContext(int watchfd, int evts, uint64_t cacheSize);
-            ~EpollContext();
+            IOContext(int watchfd, int evts, uint64_t cacheSize);
+            ~IOContext();
 
             int fd() const {return fd_;}
+
             bool readable() const {return readable_;}
+            void readable(bool change) {readable_ = change;}
+
             bool writeable() const {return writeable_;}
-            bool fatalError() const {return fatal_;}
-            int event(void) const {return events_;}
+            void writeable(bool change) {writeable_ = change;}
+
+            bool fatal() const {return fatal_;}
+            void fatal(bool change) {fatal_ = change;}
+
+            int event() const {return events_;}
             int event(int e) {return events_ = e;}
+
+            const xchange::io::Cache & readCache() const {return readCache_;}
+            const xchange::io::Cache & writeCache() const {return writeCache_;}
+
             Buffer read(uint64_t length = 0);
             int64_t write(const Buffer &buff);
             void flush();
-
-            friend class Epoll;
         private:
             const int fd_;
             int events_;
@@ -52,22 +61,11 @@ namespace io {
             int writeFromCache_(bool needFlush = false);
     };
 
-    class Epoll: xchange::Noncopyable, public xchange::EventEmitter<EpollEvent> {
+    class IOManager: xchange::Noncopyable, public xchange::EventEmitter<IOEvent> {
         public:
-            Epoll(uint64_t cacheSize = 16*1024, int maxEvent = 100);
-            ~Epoll();
-
-            int watch(int fd, int e = EPOLL_READ);
-            int unwatch(int fd, int e = 0);
-            void tick();
-        private:
-            uint64_t cacheSize_;
-            int maxEvent_;
-            int epollfd_;
-            xchange::algorithm::RedBlackTree<int, EpollContext *> ctx_;
-            std::deque<EpollContext *> unhandled_;
-
-            int setNonblocking_(int fd);
+            virtual int watch(int fd, int e) = 0;
+            virtual int unwatch(int fd, int e) = 0;
+            virtual void tick() = 0;
     };
 
 }

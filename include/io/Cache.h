@@ -17,7 +17,7 @@ namespace io {
             int write(const Buffer &buff);
 
             uint64_t size() const {return size_;};
-            uint64_t usableSize() const {return maxSize_-size();};
+            uint64_t spareSize() const {return maxSize_-size();};
             uint64_t maxSize() const {return maxSize_;};
         private:
             uint8_t *data_;

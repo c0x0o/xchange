@@ -2,24 +2,24 @@
 
 #include <iostream>
 
-#include "io/Epoll.h"
+#include "io/EpollManager.h"
 #include "io/Buffer.h"
 
 using xchange::io::Buffer;
-using xchange::io::Epoll;
-using xchange::io::EpollContext;
-using xchange::io::EpollEvent;
-using xchange::io::EPOLL_READ;
-using xchange::io::EPOLL_WRITE;
-using xchange::io::EPOLL_ERROR;
+using xchange::io::EpollManager;
+using xchange::io::IOContext;
+using xchange::io::IOEvent;
+using xchange::io::IO_READ;
+using xchange::io::IO_WRITE;
+using xchange::io::IO_ERROR;
 using std::cout;
 using std::endl;
 
 // or you can seperate them into different callback
-void handle_event(EpollEvent evt, void *arg) {
-    EpollContext & ctx = *(EpollContext *)arg;
+void handle_event(IOEvent evt, void *arg) {
+    IOContext & ctx = *(IOContext *)arg;
 
-    if (evt == EPOLL_READ) {
+    if (evt == IO_READ) {
         // when new data available in file
         // call 'EpollContextInstance.read' to get them
 
@@ -31,13 +31,13 @@ void handle_event(EpollEvent evt, void *arg) {
         } else {
             cout << "nothing read" << endl;
         }
-    } else if (evt == EPOLL_WRITE) {
+    } else if (evt == IO_WRITE) {
         // in most cases, fd is always writeable.
         // so you hardly need to listen this event,
         // just call 'EpollContextInstance.write' and
         // 'xchange' will help you cache your data
         cout << ctx.fd() << "turn to writeable from unwriteable" << endl;
-    } else if (evt == EPOLL_ERROR) {
+    } else if (evt == IO_ERROR) {
         // handle error event
         // error like EPIPE will trigger this event.
         // these errors will also be delivered to fds
@@ -51,12 +51,12 @@ void handle_event(EpollEvent evt, void *arg) {
 
 int main() {
     // default cache size for each fd is 16k, and default MAX_EVENT is 100
-    Epoll epoll;
+    EpollManager epoll;
 
-    // listening 'EPOLL_READ' event on standard input
+    // listening 'IO_READ' event on standard input
     // noticed that every fd you commit to Epoll will be set unblocking
     epoll.watch(0);
-    epoll.on(EPOLL_READ, handle_event);
+    epoll.on(IO_READ, handle_event);
 
     while (1) {
         epoll.tick();
