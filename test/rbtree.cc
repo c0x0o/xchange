@@ -1,4 +1,4 @@
-#include "algorithm/RedBlackTree.h"
+#include <xchange/algorithm/RedBlackTree.h>
 
 #include <stdlib.h>
 

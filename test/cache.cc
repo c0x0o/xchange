@@ -1,8 +1,8 @@
-#include "io/Cache.h"
+#include <xchange/io/Cache.h>
 
 #include <iostream>
 
-#include "io/Buffer.h"
+#include <xchange/io/Buffer.h>
 
 using xchange::io::Buffer;
 using xchange::io::Cache;
