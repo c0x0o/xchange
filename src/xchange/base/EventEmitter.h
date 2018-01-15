@@ -3,13 +3,14 @@
 
 #include <map>
 #include <vector>
+#include <functional>
 
 namespace xchange {
 
     template<typename T>
     class EventEmitter {
         public:
-            typedef void (*EventHandler)(T, void *);
+            typedef std::function<void (T, void*)> EventHandler;
             typedef std::vector<EventHandler> HandlerList;
 
             EventEmitter() {};
