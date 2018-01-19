@@ -65,14 +65,14 @@ namespace base {
     template<typename T>
     class LockedResourceGuard: xchange::Noncopyable {
         public:
-            explicit LockedResourceGuard(LockedResource<T> &temp): resource_(temp.getResource()) {}
-            ~LockedResourceGuard() {resource_->release();}
+            explicit LockedResourceGuard(LockedResource<T> &temp): resource_(temp) {}
+            ~LockedResourceGuard() {resource_.release();}
 
-            T &getResource() {
-                return *resource_;
+            T *getResource() {
+                return resource_.getResource();
             }
         private:
-            T *resource_;
+            LockedResource<T> &resource_;
     };
 }
 

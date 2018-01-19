@@ -1,76 +1,41 @@
 #include <xchange/base/Timer.h>
 
-using xchange::base::TimerContext;
+using xchange::thread::Thread;
+using xchange::thread::ThreadMessage;
+using xchange::thread::CurrentThread;
 using xchange::base::Timer;
 using xchange::base::TimerEvent;
 using xchange::base::Timestamp;
 using xchange::base::TimerLoop;
+using xchange::base::TimerStorage;
+using xchange::base::TimerManager;
+using xchange::base::TimerMessage;
 using xchange::algorithm::RedBlackTree;
 
-void alarmInfoHandler(int sig, siginfo_t *info, void *) {
-    Timer *timer = static_cast<Timer *>(info->si_ptr);
+TimerStorage TimerManager::storage_;
+Thread TimerManager::timerThread_(TimerLoop, "XChangeTimerThread");
 
-    if (sig != SIGALRM || timer == NULL) return;
-
-    timer->timeout();
-}
-
-void *xchange::base::TimerLoop(void *arg) {
-    TimerContext::TimerStorage & storage = static_cast<TimerContext *>(arg)->rbtree_;
-
-    sigset_t set;
-    union sigval data;
-    siginfo_t siginfo;
-    struct timespec zero = {0, 0};
-
-    sigemptyset(&set);
-    sigaddset(&set, SIGUSR1);
-    sigaddset(&set, SIGUSR2);
+void *xchange::base::TimerLoop(void *) {
+    TimerStorage & storage = TimerManager::storage_;
 
     for (;;) {
-        try {
-            // trigger all timeouted timer
-            while (storage.findSmallestPair().key < Timestamp::now()) {
-                const TimerContext::TimerStorage::Node & sender = storage.findSmallestPair();
+        storage.raiseOutdatedTimer();
 
-                data.sival_ptr = sender.value;
-                pthread_sigqueue(sender.value->holder(), SIGALRM, data);
+        while (1) {
+            ThreadMessage::ptr msg = CurrentThread::receiveMessage(0);
 
-                storage.remove(sender.key);
-            }
+            if (bool(msg)) {
+                TimerMessage *body = static_cast<TimerMessage *>(msg->data);
 
-            // receive new timer, do polling
-            while (1) {
-                int ret = sigtimedwait(&set, &siginfo, &zero);
-
-                if (ret < 0) {
-                    if (errno == EAGAIN) {
-                        break;
-                    }
-                    if (errno == EINTR) {
-                        continue;
-                    }
-
-                    break;
+                if (body->op == 0) {
+                    // remove
+                    storage.removeTimer(body->timer);
                 } else {
-                    Timer *timer = static_cast<Timer *>(siginfo.si_ptr);
-                    if (siginfo.si_signo == SIGUSR1) {
-                        storage.insert(timer->triggerTime(), timer);
-                    } else if (siginfo.si_signo == SIGUSR2) {
-                        storage.remove(timer->triggerTime());
-                    }
+                    // add
+                    storage.addTimer(body->timer);
                 }
-            }
-
-        } catch (const std::exception err) {
-            //wait infinit
-            sigwaitinfo(&set, &siginfo);
-            Timer *timer = static_cast<Timer *>(siginfo.si_ptr);
-
-            if (siginfo.si_signo == SIGUSR1) {
-                storage.insert(timer->triggerTime(), timer);
-            } else if (siginfo.si_signo == SIGUSR2) {
-                storage.remove(timer->triggerTime());
+            } else {
+                break;
             }
         }
     }
@@ -78,38 +43,84 @@ void *xchange::base::TimerLoop(void *arg) {
     return NULL;
 }
 
-TimerContext::TimerContext(): timerThread_(TimerLoop, "TimerThread") {
-    sigset_t set;
-    struct sigaction action;
+void TimerStorage::addTimer(Timer *timer) {
+    StorageGuard guard(storage_);
+    RawStorage &rbtree = *guard.getResource();
 
-    action.sa_flags = SA_SIGINFO;
-    action.sa_sigaction = alarmInfoHandler;
-    sigemptyset(&action.sa_mask);
-    sigaction(SIGALRM, &action, NULL);
+    rbtree.insert(timer->exceedTime(), timer);
+}
+
+void TimerStorage::removeTimer(Timer *timer) {
+    StorageGuard guard(storage_);
+    RawStorage &rbtree = *guard.getResource();
+
+    rbtree.remove(timer->exceedTime());
+}
+
+void TimerStorage::raiseOutdatedTimer() {
+    StorageGuard guard(storage_);
+    RawStorage &rbtree = *guard.getResource();
+
+    while (1) {
+        try {
+            const RawStorage::Node &node = rbtree.findSmallestPair();
+
+            if (Timestamp::now() >= node.key) {
+                union sigval val;
+                val.sival_ptr = node.value;
+                pthread_sigqueue(node.value->holder(), SIGALRM, val);
+
+                rbtree.remove(node.key);
+            } else {
+                break;
+            }
+        } catch(const std::exception &err) {
+            break;
+        }
+    }
+}
+
+int TimerManager::registerTimer(Timer *timer) {
+    TimerMessage *add = new TimerAddMessage(timer);
+
+    if (!timerThread_.running()) {
+        timerThread_.run();
+    }
+
+    return timerThread_.sendMessage(add);
+}
+
+int TimerManager::deregisterTimer(Timer *timer) {
+    TimerMessage *del = new TimerRemoveMessage(timer);
+
+    if (!timerThread_.running()) {
+        timerThread_.run();
+    }
+
+    return timerThread_.sendMessage(del);
+}
+
+void TimerManager::collectOutdatedTimer() {
+    siginfo_t info;
+    sigset_t set;
+    struct timespec t;
 
     sigemptyset(&set);
-    sigaddset(&set, SIGUSR1);
-    sigaddset(&set, SIGUSR2);
-    pthread_sigmask(SIG_BLOCK, &set, NULL);
+    sigaddset(&set, SIGALRM);
+    t.tv_sec = 0;
+    t.tv_nsec = 0;
 
-    timerThread_.run(this);
-}
+    while (1) {
+        int ret = sigtimedwait(&set, &info, &t);
 
-TimerContext::~TimerContext() {
-}
+        if (ret < 0) {
+            if (errno != EINTR) {
+                break;
+            }
+            continue;
+        }
 
-// use SIGUSR1 to register timer
-int TimerContext::registerTimer(Timer *timer) {
-    union sigval data;
-
-    data.sival_ptr = timer;
-    return pthread_sigqueue(timerThread_.tid(), SIGUSR1, data);
-}
-
-// use SIGUSR1 to deregister timer
-int TimerContext::deregisterTimer(Timer *timer) {
-    union sigval data;
-
-    data.sival_ptr = timer;
-    return pthread_sigqueue(timerThread_.tid(), SIGUSR2, data);
+        Timer * timer = static_cast<Timer *>(info.si_ptr);
+        timer->trigger();
+    }
 }

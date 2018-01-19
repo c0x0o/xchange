@@ -11,28 +11,25 @@ using std::endl;
 
 using xchange::base::Timer;
 using xchange::base::Timestamp;
-using xchange::base::TimerContext;
+using xchange::base::TimerManager;
 using xchange::base::TimerEvent;
 using xchange::base::TIMER_TIMEOUT;
 
-void callback(TimerEvent, void *arg) {
-    std::cout << "Timer triggered at "<< Timestamp::now().toString() << std::endl;
-    std::cout << "argument of timer is: " << static_cast<char *>(arg) << endl;
+// second arg map to the second arg of constructor
+void callback(TimerEvent, void *) {
+    std::cout << "[Timer]" << Timestamp::now().toString() << std::endl;
 }
 
 int main(void) {
-    TimerContext timerContext;
+    for (int i = 0; i < 10000; i++) {
+        Timer *t = new Timer(Timestamp::now()+2, NULL);
+        t->on(TIMER_TIMEOUT, callback);
 
-    char timerarg[] = "i'm the argument of timer";
+        TimerManager::registerTimer(t);
+        TimerManager::collectOutdatedTimer();
 
-    // trigger after 3 seconds
-    Timer timer(Timestamp::now() += 3, timerarg);
-    timer.on(TIMER_TIMEOUT, callback);
-
-    cout << "Timer Registered at " << Timestamp::now().toString() << endl;
-    timerContext.registerTimer(&timer);
-
-    sleep(5);
+        sleep(1);
+    }
 
     return 0;
 }

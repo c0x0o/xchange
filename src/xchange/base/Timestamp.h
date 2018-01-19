@@ -35,15 +35,15 @@ namespace base {
             }
 
             static Timestamp now() {return Timestamp();}
-            Timestamp& operator+=(const xchange::base::Timestamp &a) {
-                time_.tv_sec += a.time_.tv_sec;
-                time_.tv_nsec += a.time_.tv_nsec;
-
-                return *this;
-            }
             Timestamp& operator=(const Timestamp &a) {
                 time_.tv_sec = a.time_.tv_sec;
                 time_.tv_nsec = a.time_.tv_nsec;
+
+                return *this;
+            }
+            Timestamp& operator+=(const xchange::base::Timestamp &a) {
+                time_.tv_sec += a.time_.tv_sec;
+                time_.tv_nsec += a.time_.tv_nsec;
 
                 return *this;
             }
@@ -64,9 +64,9 @@ namespace base {
                 char buf[32] = {0};
 
                 localtime_r(&time_.tv_sec, &parsed);
-                snprintf(buf, 31, "%s, %02d %s %d %02d:%02d:%02d %s",
+                snprintf(buf, 31, "%s, %02d %s %d %02d:%02d:%02d.%ld %s",
                         getDay(parsed.tm_wday), parsed.tm_mday, getMonth(parsed.tm_mon), parsed.tm_year+1900,
-                        parsed.tm_hour, parsed.tm_min, parsed.tm_sec, parsed.tm_zone);
+                        parsed.tm_hour, parsed.tm_min, parsed.tm_sec, time_.tv_nsec, parsed.tm_zone);
 
                 return buf;
             }
@@ -75,9 +75,9 @@ namespace base {
                 char buf[32] = {0};
 
                 gmtime_r(&time_.tv_sec, &parsed);
-                snprintf(buf, 31, "%s, %02d %s %d %02d:%02d:%02d %s",
+                snprintf(buf, 31, "%s, %02d %s %d %02d:%02d:%02d.%ld %s",
                         getDay(parsed.tm_wday), parsed.tm_mday, getMonth(parsed.tm_mon), parsed.tm_year+1900,
-                        parsed.tm_hour, parsed.tm_min, parsed.tm_sec, parsed.tm_zone);
+                        parsed.tm_hour, parsed.tm_min, parsed.tm_sec, time_.tv_nsec, parsed.tm_zone);
 
                 return buf;
             }
@@ -132,7 +132,7 @@ namespace base {
             friend bool operator<=(const Timestamp &a, const Timestamp &b) {
                 if (a.time_.tv_sec < b.time_.tv_sec) {
                     return true;
-                } else if (a.time_.tv_sec == b.time_.tv_sec && a.time_.tv_nsec <= a.time_.tv_nsec) {
+                } else if (a.time_.tv_sec == b.time_.tv_sec && a.time_.tv_nsec <= b.time_.tv_nsec) {
                     return true;
                 }
 
