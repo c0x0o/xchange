@@ -6,6 +6,8 @@
 
 #include <atomic>
 #include <vector>
+#include <functional>
+#include <memory>
 #include <stdexcept>
 
 #include <xchange/design/Noncopyable.h>
@@ -15,79 +17,94 @@
 
 namespace xchange {
     namespace threadPool {
-        enum WorkerEvent {WORKER_INIT, WORKER_DESTROY};
-        enum ThreadPoolEvent {POOL_INIT, POOL_DESTROY, TASK_START, TASK_COMPLETE, TASK_FAILED};
-        class Task;
-        class Worker;
-        class ThreadPool;
+        enum TaskEvent {TASK_START, TASK_COMPLETE};
+        enum ThreadPoolEvent {POOL_INIT, POOL_TERMINATE};
 
-        class Task {
+        class Task: public Noncopyable, public EventEmitter<TaskEvent> {
             public:
-                typedef void *(*fn)(void *);
+                typedef thread::Thread::routine routine;
                 typedef uint64_t id;
+                typedef enum {UNKNOWN = 0, INIT, RUNNING, COMPLETE} Status;
+                typedef std::shared_ptr<Task> ptr;
 
-                Task(fn, void *arg = NULL);
-                Task(const Task & oldTask);
-                ~Task();
+                Task(routine, void *arg = NULL);
+                ~Task() {};
 
-                id getId() const {return taskId_;};
-                bool isRunning() const {return status_ == 1;};
-                bool completed() const {return status_ == 2;};
-                void *getResult() const {return result_;};
+                Task::id getId() const {return taskId_;}
+                void* getResult() const {return result_;}
+                Task::Status getStatus() const {return status_;}
 
-                void run();
+                void* run();
+                void* operator()() {return run();};
             private:
+                static std::atomic<uint64_t> usableId_;
+
                 const id taskId_;
-                uint8_t status_; // 0: init 1: running 2:complete
-                fn main_;
+                Status status_;
+                routine main_;
                 void *arg_;
                 void *result_;
-                static std::atomic_uint64_t usableId_;
         };
 
-        void * WorkerMain(void *);
+        void *workerMain(void *);
 
-        class Worker: public xchange::EventEmitter<WorkerEvent> {
+        class Worker: public Noncopyable {
             public:
-                Worker(uint64_t queueSize, ThreadPool &parent);
-                Worker(const Worker & oldWorker);
+                Worker(uint64_t queueSize);
                 ~Worker();
 
-                bool isRunning() const {return running_;};
-                bool isAlive() {return 0 == thread_.kill(0);};
-                uint64_t taskQueueSize() const {return tasks_.size();}
-                Task *currentTask() const {return currentTask_;};
+                bool busy() const {return busy_;}
+                bool alive();
+                bool queueSize() const {return tasks_.size();}
 
-                int addTask(Task *);
-                void kill(int sig = SIGKILL);
+                void kill();
+                void restart();
+                int addTask(Task *task);
 
-                friend void * xchange::threadPool::WorkerMain(void *);
+                friend void *workerMain(void *);
             private:
-                bool running_;
-                Task *currentTask_;
-                ThreadPool &parent_;
-                xchange::algorithm::LockFreeQueue<Task *> tasks_;
+                bool busy_;
+                uint64_t maxSize_;
+                xchange::algorithm::LockFreeQueueSP<Task *> tasks_;
                 xchange::thread::Thread thread_;
         };
 
         class ThreadPool : xchange::Noncopyable, public xchange::EventEmitter<ThreadPoolEvent> {
             public:
-                typedef xchange::thread::Thread::routine Routine;
+                struct Status {
+                    Status(uint64_t a, uint64_t b, uint64_t c, uint64_t d)
+                        : totalThread(a),
+                        aliveThread(b),
+                        busyThread(c),
+                        unhandledTask(d) {
+                    }
+                    ~Status() {}
 
-                ThreadPool(uint64_t numOfWorker = 10, uint64_t WorkerQueueSize = 64);
+                    const uint64_t totalThread;
+                    const uint64_t aliveThread;
+                    const uint64_t busyThread;
+                    const uint64_t unhandledTask;
+                };
+
+                static void checkResult();
+
+                ThreadPool(uint64_t numOfWorker = 8, uint64_t WorkerQueueSize = 64);
                 ~ThreadPool();
 
-                bool isRunning() const {return running_;};
+                bool running() const {return running_;};
                 uint64_t size() const {return workers_.size();};
+                ThreadPool::Status getStatus() const;
 
-                Task::id execute(Routine, void *);
+                int start();
+                int execute(Task *);
                 void maintain();
-                void destroy();
+                void terminate();
             private:
                 bool running_;
+                uint64_t numOfWorker_;
+                uint64_t workerQueueSize_;
                 std::vector<Worker *> workers_;
         };
-
     }
 }
 

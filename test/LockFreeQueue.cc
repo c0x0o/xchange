@@ -9,11 +9,12 @@
 #include <xchange/base/Thread.h>
 
 using xchange::algorithm::LockFreeQueue;
+using xchange::algorithm::LockFreeQueueSP;
 using xchange::thread::Thread;
-using xchange::thread::currentThread;
+using xchange::thread::CurrentThread;
 
 LockFreeQueue<int> q(10000);
-std::atomic_uint64_t i;
+std::atomic<uint64_t> i;
 
 void * pushData(void *) {
     while (1) {
@@ -55,7 +56,7 @@ void * popData(void *) {
 }
 
 void onCom(xchange::thread::ThreadEvent, void *) {
-    std::cout << "Terminated " << xchange::thread::currentThread.threadName() << std::endl;
+    std::cout << "Terminated " << xchange::thread::CurrentThread::getThreadInfo().threadName() << std::endl;
 }
 
 int main(void) {

@@ -42,14 +42,14 @@ int EpollManager::setNonblocking_(int fd) {
     return fcntl(fd, F_SETFL, old|O_NONBLOCK);
 }
 
-int EpollManager::watch(int fd, int e) {
+IOContext* EpollManager::watch(int fd, int e) {
     struct epoll_event ev;
     IOContext *ctx = NULL;
     int ret;
 
     ret = setNonblocking_(fd);
     if (ret < 0) {
-        return -1;
+        return NULL;
     }
 
     ev.events = EPOLLET;
@@ -82,7 +82,7 @@ int EpollManager::watch(int fd, int e) {
         }
     }
 
-    return ret;
+    return ctx;
 }
 
 int EpollManager::unwatch(int fd, int e) {

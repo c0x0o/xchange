@@ -49,7 +49,7 @@ namespace base {
 
             explicit Timer(xchange::base::Timestamp &ts, void *arg)
                 :triggerTime_(ts),
-                holder_(xchange::thread::currentThread.tid()),
+                holder_(xchange::thread::CurrentThread::getThreadInfo().tid()),
                 arg_(arg)
             {
             };

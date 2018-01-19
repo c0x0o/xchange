@@ -2,11 +2,12 @@ cmake_minimum_required (VERSION 2.6)
 
 project(xchange)
 set(CMAKE_BUILD_TYPE debug)
+add_compile_options(-std=c++11)
 
 include_directories(AFTER SYSTEM src)
 
 set(THREAD_SOURCE ./src/xchange/base/Thread.cc)
-set(THREADPOOL_SOURCE ./src/xchange/base/Thread.cc ./src/xchange/base/ThreadPool.cc)
+set(THREADPOOL_SOURCE ./src/xchange/base/ThreadPool.cc)
 set(BUFFER_SOURCE ./src/xchange/io/Buffer.cc)
 set(CACHE_SOURCE ./src/xchange/io/Cache.cc)
 set(IOMANAGER_SOURCE ./src/xchange/io/IOManager.cc ./src/xchange/io/EpollManager.cc)
@@ -15,7 +16,7 @@ set(NET_SOURCE ./src/xchange/net/Address.cc)
 
 add_executable(threadTest ${THREAD_SOURCE} ./test/thread.cc)
 add_executable(queueTest ${THREAD_SOURCE} ./test/LockFreeQueue.cc)
-add_executable(threadPoolTest ${THREADPOOL_SOURCE} ./test/threadPool.cc)
+add_executable(threadPoolTest ${THREAD_SOURCE} ${THREADPOOL_SOURCE} ./test/ThreadPool_test.cc)
 add_executable(bufferTest ${BUFFER_SOURCE} ./test/buffer.cc)
 add_executable(cacheTest ${BUFFER_SOURCE} ${CACHE_SOURCE} ./test/cache.cc)
 add_executable(rbtree ./test/rbtree.cc)

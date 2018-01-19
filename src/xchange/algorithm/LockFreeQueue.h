@@ -36,8 +36,13 @@ namespace algorithm {
                 delete queue_;
             }
 
-            uint64_t size() const {return currentTail_.load(std::memory_order_relaxed) - head_.load(std::memory_order_relaxed);}
-            bool empty() const {return currentTail_.load(std::memory_order_relaxed) == head_.load(std::memory_order_relaxed);}
+            uint64_t size() const {
+                uint64_t head = currentTail_.load(std::memory_order_relaxed);
+                uint64_t tail = head_.load(std::memory_order_relaxed);
+
+                return mod(head, maxSize_) - mod(tail, maxSize_);
+            }
+            bool empty() const {return size() == 0;}
 
             T shift() {
                 uint64_t readIndex;
@@ -84,8 +89,79 @@ namespace algorithm {
         private:
             T *queue_;
             uint64_t maxSize_;
-            std::atomic_uint64_t currentTail_, head_, tail_;
+            std::atomic<uint64_t> currentTail_, head_, tail_;
     };
+
+    // for single producer
+    template<typename T>
+    class LockFreeQueueSP {
+        public:
+            LockFreeQueueSP(uint64_t max)
+            {
+                maxSize_ = round_u64(max);
+                queue_ = new T[maxSize_];
+                head_.store(0, std::memory_order_relaxed);
+                tail_.store(0, std::memory_order_relaxed);
+            }
+            LockFreeQueueSP(const LockFreeQueue<T> & oldQueue) {
+                maxSize_ = oldQueue.maxSize_;
+                memcpy(&queue_, &oldQueue.queue_, maxSize_);
+                head_.store(oldQueue.head_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+                tail_.store(oldQueue.tail_.load(std::memory_order_relaxed), std::memory_order_relaxed);
+            }
+            ~LockFreeQueueSP() {
+                delete queue_;
+            }
+
+            uint64_t size() const {
+                uint64_t head = tail_.load(std::memory_order_relaxed);
+                uint64_t tail = head_.load(std::memory_order_relaxed);
+
+                return mod(head, maxSize_) - mod(tail, maxSize_);
+            }
+            bool empty() const {return size() == 0;}
+
+
+            T shift() {
+                uint64_t readIndex;
+                uint64_t maxReadIndex;
+
+                do {
+                    readIndex = head_.load(std::memory_order_relaxed);
+                    maxReadIndex = tail_.load(std::memory_order_relaxed);
+
+                    if (mod(readIndex, maxSize_) == mod(maxReadIndex, maxSize_)) {
+                        throw std::out_of_range("out of range in LockFreeQueue");
+                    }
+                } while (!std::atomic_compare_exchange_weak_explicit(&head_, &readIndex, readIndex+1,
+                            std::memory_order_release,
+                            std::memory_order_relaxed));
+
+                return queue_[mod(readIndex, maxSize_)];
+            };
+
+            void push(T val) {
+                uint64_t readIndex;
+                uint64_t writeIndex;
+
+                readIndex = head_.load(std::memory_order_relaxed);
+                writeIndex = tail_.load(std::memory_order_relaxed);
+
+                if (mod(writeIndex+1, maxSize_) == mod(readIndex, maxSize_)) {
+                    throw std::overflow_error("overflow in LockFreeQueue");
+                }
+
+                queue_[mod(writeIndex, maxSize_)] = val;
+
+                tail_.fetch_add(1, std::memory_order_release);
+            };
+
+        private:
+            T *queue_;
+            uint64_t maxSize_;
+            std::atomic<uint64_t> head_, tail_;
+    };
+
 
 }
 }

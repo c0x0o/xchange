@@ -1,210 +1,232 @@
 #include <xchange/base/ThreadPool.h>
 
+using xchange::thread::CurrentThread;
 using xchange::threadPool::Task;
+using xchange::threadPool::TaskEvent;
 using xchange::threadPool::Worker;
-using xchange::threadPool::WorkerMain;
-using xchange::threadPool::WorkerEvent;
+using xchange::threadPool::workerMain;
 using xchange::threadPool::ThreadPool;
 using xchange::threadPool::ThreadPoolEvent;
 
-Task::Task(Task::fn handler, void *arg)
+std::atomic<uint64_t> Task::usableId_(0);
+
+Task::Task(Task::routine fn, void *arg)
     : taskId_(usableId_.load(std::memory_order_relaxed)),
-    status_(0),
-    main_(handler),
+    status_(Task::INIT),
+    main_(fn),
     arg_(arg),
     result_(NULL)
-{
-    usableId_++;
-}
-std::atomic_uint64_t Task::usableId_(1);
+{}
 
-Task::Task(const Task & oldTask)
-    : taskId_(usableId_.load(std::memory_order_relaxed)),
-    status_(0),
-    main_(oldTask.main_),
-    arg_(oldTask.arg_),
-    result_(NULL)
-{
-    usableId_++;
-}
+void* Task::run() {
+    if (status_ != INIT) return NULL;
 
-Task::~Task() {}
-
-void Task::run() {
-    status_++;
+    emit(TaskEvent::TASK_START, NULL);
+    status_ = RUNNING;
     result_ = main_(arg_);
-    status_++;
+    status_ = COMPLETE;
+    emit(TaskEvent::TASK_COMPLETE, result_);
+
+    return result_;
 }
 
-Worker::Worker(uint64_t queueSize, ThreadPool & parent)
-    : running_(false),
-    currentTask_(NULL),
-    parent_(parent),
-    tasks_(queueSize),
-    thread_(WorkerMain)
-{
-    thread_.run(this);
-    EventEmitter::on(WORKER_INIT, NULL);
-}
+void *xchange::threadPool::workerMain(void *arg) {
+    Worker &worker = *static_cast<Worker *>(arg);
 
-Worker::Worker(const Worker & oldWorker)
-    : running_(false),
-    currentTask_(NULL),
-    parent_(oldWorker.parent_),
-    tasks_(oldWorker.tasks_),
-    thread_(WorkerMain)
-{
-    thread_.run(this);
-    EventEmitter::on(WORKER_INIT, NULL);
-}
-
-Worker::~Worker() {
-    Task *task;
-
-    if (isAlive()) {
-        running_ = false;
-        currentTask_ = NULL;
-        kill();
-    }
-
-    if (thread_.joinable()) {
-        thread_.join();
-    }
-
-    while (1) {
-        try {
-            task = tasks_.shift();
-            delete task;
-        } catch (const std::out_of_range &e) {
-            break;
-        }
-    }
-
-    EventEmitter::on(WORKER_DESTROY, NULL);
-}
-
-int Worker::addTask(Task * task) {
-    if (!isAlive()) return 1;
-
-    try {
-        tasks_.push(task);
-        thread_.kill(SIGUSR1);
-    } catch (const std::overflow_error &e) {
-        return 1;
-    }
-
-    return 0;
-}
-
-void Worker::kill(int sig) {
-    thread_.kill(sig);
-}
-
-void *xchange::threadPool::WorkerMain(void *arg) {
-    Worker *context = static_cast<Worker *>(arg);
     sigset_t set;
-    int sig;
-
+    siginfo_t info;
     sigemptyset(&set);
-    sigaddset(&set, SIGUSR1);
+    sigaddset(&set, SIGUSR2);
 
     while (1) {
-        Task *task = NULL;
-        try {
-            task = context->tasks_.shift();
-        } catch (std::out_of_range e) {
-            sigwait(&set, &sig);
-
-            continue;
+        if (worker.queueSize() == 0) {
+            sigwaitinfo(&set, &info);
         }
 
-        context->currentTask_ = task;
-        context->running_ = true;
-        context->parent_.emit(xchange::threadPool::TASK_START, task);
-        task->run();
-        context->running_ = false;
-        context->parent_.emit(xchange::threadPool::TASK_COMPLETE, task);
+        while (1) {
+            try {
+                Task* taskp = worker.tasks_.shift();
+
+                if (bool(taskp)) {
+                    union sigval val;
+
+                    worker.busy_ = true;
+                    taskp->run();
+                    worker.busy_ = false;
+
+                    val.sival_ptr = taskp;
+                    pthread_sigqueue(CurrentThread::getThreadInfo().mainid(), SIGUSR2, val);
+                }
+            } catch (const std::exception &err) {
+                break;
+            }
+        }
     }
 
     return NULL;
 }
 
-ThreadPool::ThreadPool(uint64_t numOfWorker, uint64_t workerQueueSize)
-    : running_(true)
-{
-    sigset_t sigset;
+Worker::Worker(uint64_t queueSize)
+    : busy_(false),
+    maxSize_(queueSize),
+    tasks_(queueSize),
+    thread_(workerMain, "ThreadPoolWorker") {
 
-    sigemptyset(&sigset);
-    sigaddset(&sigset, SIGUSR1);
-    pthread_sigmask(SIG_BLOCK, &sigset, NULL);
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGUSR2);
+    pthread_sigmask(SIG_BLOCK, &set, NULL);
 
-    for (uint64_t i = 0; i < numOfWorker; i++) {
-        Worker * worker = new Worker(workerQueueSize, *this);
-
-        workers_.push_back(worker);
-    }
-
-    EventEmitter::emit(POOL_INIT, NULL);
+    thread_.detach();
+    thread_.run(this);
+}
+Worker::~Worker() {
+    thread_.kill();
 }
 
+bool Worker::alive() {
+    return 0 == thread_.kill(0);
+}
+
+void Worker::kill() {
+    thread_.kill();
+}
+
+void Worker::restart() {
+    if (!alive()) {
+        thread_.run(this);
+    }
+}
+
+int Worker::addTask(Task *taskptr) {
+    int ret = 0;
+
+    taskptr->emit(TaskEvent::TASK_START, NULL);
+    try {
+        tasks_.push(taskptr);
+    } catch(const std::exception &err) {
+        ret = 1;
+    }
+
+    union sigval val;
+    val.sival_ptr = NULL;
+    pthread_sigqueue(thread_.tid(), SIGUSR2, val);
+
+    return ret;
+}
+
+ThreadPool::ThreadPool(uint64_t numOfWorker, uint64_t WorkerQueueSize)
+    : running_(false),
+    numOfWorker_(numOfWorker),
+    workerQueueSize_(WorkerQueueSize),
+    workers_() {
+}
 ThreadPool::~ThreadPool() {
-    destroy();
+    terminate();
 }
 
-Task::id ThreadPool::execute(ThreadPool::Routine func, void *arg) {
-    Task *task = new Task(func, arg);
-    std::vector<Worker *>::iterator nextWorker;
+void ThreadPool::checkResult() {
+    siginfo_t info;
 
-    // balance load
-    uint64_t min = 4294967295;
-    for (std::vector<Worker *>::iterator i = workers_.begin(); i != workers_.end(); i++) {
-        Worker & worker = **i;
-        uint64_t queueSize = worker.taskQueueSize();
+    sigset_t set;
+    sigemptyset(&set);
+    sigaddset(&set, SIGUSR2);
 
-        if (queueSize < min || (queueSize == min && !worker.isRunning())) {
-            nextWorker = i;
-            min = queueSize;
+    struct timespec t;
+    t.tv_sec = 0;
+    t.tv_nsec = 0;
+
+    while (1) {
+        int ret = sigtimedwait(&set, &info, &t);
+        if (ret < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            break;
         }
-    };
 
-    // add task failed
-    int retry = 0;
-    while ((*nextWorker)->addTask(task)) {
-        if (retry < 3) {
-            // try to fix it
-            maintain();
-            retry++;
-        } else {
-            // return an error
-            return 0;
+        Task * taskp = static_cast<Task *>(info.si_ptr);
+
+        if (taskp != NULL) {
+            taskp->emit(TaskEvent::TASK_COMPLETE, taskp);
+        }
+    }
+}
+
+ThreadPool::Status ThreadPool::getStatus() const {
+    uint64_t size = workers_.size();
+    uint64_t aliveNum = 0;
+    uint64_t busyNum = 0;
+    uint64_t unhandledNum = 0;
+
+    for (uint64_t i = 0; i < size; i++) {
+        if (workers_[i]->alive()) {
+            aliveNum++;
+
+            if (workers_[i]->busy()) {
+                busyNum++;
+            }
+        }
+
+        unhandledNum += workers_[i]->queueSize();
+    }
+
+    return Status(size, aliveNum, busyNum, unhandledNum);
+}
+
+int ThreadPool::start() {
+    for (uint64_t i = 0; i < numOfWorker_; i++) {
+        workers_.push_back(new Worker(workerQueueSize_));
+    }
+
+    running_ = true;
+    emit(ThreadPoolEvent::POOL_INIT, NULL);
+
+    return 0;
+}
+
+int ThreadPool::execute(Task *ptr) {
+    uint64_t min = workerQueueSize_, which = 0;
+
+    if (ptr == NULL || !running_) {
+        return -1;
+    }
+
+    for (uint64_t i = 0; i < workers_.size(); i++) {
+        if (workers_[i]->queueSize() == 0 && !workers_[i]->busy()) {
+            which = i;
+            min = workers_[i]->queueSize();
+            break;
+        }
+
+        if (workers_[i]->queueSize() < min) {
+            which = i;
+            min = workers_[i]->queueSize();
         }
     }
 
-    return task->getId();
+    if (min == workerQueueSize_) {
+        return -1;
+    }
+
+    workers_[which]->addTask(ptr);
+
+    return 0;
 }
 
 void ThreadPool::maintain() {
-    for (std::vector<Worker *>::iterator i = workers_.begin(); i < workers_.end();) {
-        Worker * worker = *i;
-
-        if (!worker->isAlive()) {
-            Worker *newOne = new Worker(*worker);
-
-            delete worker;
-
-            i = workers_.erase(i);
-            workers_.push_back(newOne);
-        } else {
-            i++;
-        }
+    for (uint64_t i = 0; i < workers_.size(); i++) {
+        workers_[i]->restart();
     }
 }
 
-void ThreadPool::destroy() {
-    running_ = false;
-    for (std::vector<Worker *>::iterator i = workers_.begin(); i < workers_.end(); i++) {
-        delete *i;
+void ThreadPool::terminate() {
+    for (uint64_t i = 0; i < workers_.size(); i++) {
+        workers_[i]->kill();
     }
 
-    EventEmitter::emit(POOL_DESTROY, NULL);
+    checkResult();
+
+    running_ = false;
+    emit(ThreadPoolEvent::POOL_TERMINATE, NULL);
 }

@@ -7,80 +7,98 @@
 #include <string>
 #include <map>
 #include <atomic>
+#include <memory>
+#include <functional>
 
 #include <xchange/design/Noncopyable.h>
 #include <xchange/design/Singleton.h>
 #include <xchange/base/EventEmitter.h>
 
-#define getThreadKeyPtr(key, type) (*static_cast<type *>(pthread_getspecific(key)))
-#define getThreadKey(key, type) (static_cast<type>(pthread_getspecific(key)))
-
 namespace xchange {
     namespace thread {
         enum ThreadEvent {SUCCESS = 0, INIT = 1, COMPLETE = 2, ERROR = 3};
 
-        void *threadMain(void *contextPtr);
+        void *threadMain(void *);
 
-        class Thread : xchange::Noncopyable, public xchange::EventEmitter<ThreadEvent> {
+        class Thread : public xchange::Noncopyable, public xchange::EventEmitter<ThreadEvent> {
             public:
-                typedef void * (*routine)(void *);
+                typedef std::function<void *(void *)> routine;
                 typedef pthread_t id;
 
-                explicit Thread(routine func, const std::string & name = std::string("Xchange_Thread"));
+                explicit Thread(const routine func, const std::string & name = std::string("Xchange_Thread"));
                 ~Thread();
 
-                bool joinable() const {return joinable_;};
-                id tid() const {return tid_;};
-                const std::string & threadName() const {return threadName_;}
-                static uint64_t totalThreads() {return total_.load();}
+                static uint64_t total() {return total_.load();}
 
-                int run(void *arg = NULL);
-                int kill(int);
+                bool joinable() const {return joinable_;};
+                bool running() const {return running_;};
+                id tid() const {return tid_;};
+                const std::string threadName() const {return threadName_;}
+                routine getUserFunc() const {return userFunc_;}
+
+                void run(void *arg = NULL);
+                int kill(int sig, void *arg = NULL);
+                int kill();
+                int sendMessage(void *msg);
                 void* join();
                 void detach();
 
-                friend void *threadMain(void *contextPtr);
-                friend struct ThreadData;
+                friend void *threadMain(void *);
             private:
+                static std::atomic<uint64_t> total_;
+
                 pthread_t tid_;
                 pthread_attr_t attr_;
                 routine userFunc_;
-                bool isRunning_;
+                bool running_;
                 bool joinable_;
                 std::string threadName_;
                 void *result_;
                 void *arg_;
-                static std::atomic_uint64_t total_;
         };
 
-        struct ThreadData {
+        struct ThreadMessage {
+            typedef std::shared_ptr<thread::ThreadMessage> ptr;
+
+            ThreadMessage(Thread::id s, void *d):sender(s), data(d){};
+            ~ThreadMessage(){};
+            const Thread::id sender;
+            void *data;
+        };
+
+        class ThreadData {
+            public:
+                ThreadData();
+                ~ThreadData();
+
+                Thread::id mainid() const {return mainid_;};
+
+                Thread::id tid() const;
+                void tid(Thread::id id) const;
+
+                const std::string threadName() const;
+                void threadName(const std::string &name);
+
             private:
                 pthread_t mainid_;
                 pthread_key_t tid_;
                 pthread_key_t threadName_;
-            public:
-                ThreadData() {
-                    mainid_ = pthread_self();
-                    pthread_key_create(&tid_, NULL);
-                    pthread_key_create(&threadName_, NULL);
-
-                    pthread_setspecific(tid_, &mainid_);
-                };
-                ~ThreadData() {
-                    pthread_key_delete(tid_);
-                    pthread_key_delete(threadName_);
-                };
-
-                Thread::id mainid() const {return mainid_;};
-
-                Thread::id tid() const {return getThreadKeyPtr(tid_, Thread::id);};
-                void tid(Thread::id *id) {pthread_setspecific(tid_, id);};
-
-                const std::string &threadName() const {return getThreadKeyPtr(threadName_, std::string);};
-                void threadName(std::string *name) {pthread_setspecific(threadName_, name);};
         };
 
-        extern ThreadData & currentThread;
+        class CurrentThread: public xchange::Noncopyable {
+            public:
+                static ThreadData &getThreadInfo();
+                static bool isCurrentThread(Thread &t);
+                static bool isCurrentThread(Thread::id id);
+                static bool isMainThread(Thread &t);
+                static bool isMainThread(Thread::id id);
+                static int sendMessage(Thread::id target, void *msg);
+                static ThreadMessage::ptr receiveMessage(double timeout = -1);
+            private:
+                CurrentThread();
+
+                static ThreadData data_;
+        };
     }
 }
 

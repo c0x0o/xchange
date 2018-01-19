@@ -63,7 +63,7 @@ namespace io {
 
     class IOManager: xchange::Noncopyable, public xchange::EventEmitter<IOEvent> {
         public:
-            virtual int watch(int fd, int e) = 0;
+            virtual IOContext* watch(int fd, int e) = 0;
             virtual int unwatch(int fd, int e) = 0;
             virtual void tick() = 0;
     };

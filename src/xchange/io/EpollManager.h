@@ -25,7 +25,7 @@ namespace io {
             EpollManager(uint64_t cacheSize = 16*1024, int maxEvent = 100);
             ~EpollManager();
 
-            int watch(int fd, int e = xchange::io::IO_READ);
+            io::IOContext* watch(int fd, int e = xchange::io::IO_READ);
             int unwatch(int fd, int e = 0);
             void tick();
         private:

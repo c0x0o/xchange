@@ -16,8 +16,8 @@ namespace net {
         public:
             typedef enum {IPv4 = 0, IPv6} SockType;
 
-            SocketAddress(SockType, const std::string & addr, uint16_t port);
-            SocketAddress(SockType, const struct sockaddr_storage *);
+            explicit SocketAddress(SockType, const std::string & addr, uint16_t port);
+            explicit SocketAddress(SockType, const struct sockaddr_storage *);
             SocketAddress(const struct sockaddr *);
             SocketAddress(const struct sockaddr_in *);
             SocketAddress(const struct sockaddr_in6 *);
