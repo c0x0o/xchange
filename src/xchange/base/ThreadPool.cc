@@ -10,8 +10,9 @@ using xchange::threadPool::ThreadPoolEvent;
 
 std::atomic<uint64_t> Task::usableId_(0);
 
-Task::Task(Task::routine fn, void *arg)
-    : taskId_(usableId_.load(std::memory_order_relaxed)),
+Task::Task(Task::routine fn, void *arg, bool recycle)
+    : recycle_(recycle),
+    taskId_(usableId_.load(std::memory_order_relaxed)),
     status_(Task::INIT),
     main_(fn),
     arg_(arg),
@@ -55,7 +56,15 @@ void *xchange::threadPool::workerMain(void *arg) {
                     worker.busy_ = false;
 
                     val.sival_ptr = taskp;
-                    pthread_sigqueue(CurrentThread::getThreadInfo().mainid(), SIGUSR2, val);
+
+                    // no signal will be sent if no handlers bind to task
+                    if (taskp->hasEventHandler()) {
+                        pthread_sigqueue(CurrentThread::getThreadInfo().mainid(), SIGUSR2, val);
+                    } else {
+                        if (taskp->needRecycle()) {
+                            delete taskp;
+                        }
+                    }
                 }
             } catch (const std::exception &err) {
                 break;
@@ -119,10 +128,18 @@ ThreadPool::ThreadPool(uint64_t numOfWorker, uint64_t WorkerQueueSize)
     : running_(false),
     numOfWorker_(numOfWorker),
     workerQueueSize_(WorkerQueueSize),
-    workers_() {
+    workers_()
+{
 }
 ThreadPool::~ThreadPool() {
-    terminate();
+    for (uint64_t i = 0; i < workers_.size(); i++) {
+        delete workers_[i];
+    }
+
+    checkResult();
+
+    running_ = false;
+    emit(ThreadPoolEvent::POOL_TERMINATE, NULL);
 }
 
 void ThreadPool::checkResult() {
@@ -149,6 +166,10 @@ void ThreadPool::checkResult() {
 
         if (taskp != NULL) {
             taskp->emit(TaskEvent::TASK_COMPLETE, taskp);
+        }
+
+        if (taskp->needRecycle()) {
+            delete taskp;
         }
     }
 }

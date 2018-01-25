@@ -12,67 +12,11 @@ using xchange::threadPool::ThreadPool;
 #include <unistd.h>
 #include <string.h>
 
-std::string getCountTime();
-std::string getTime();
-long getClock();
-
-std::string getCountTime()
-{
-    time_t nowTime;
-    time(&nowTime);
-
-    nowTime = nowTime + 8 * 3600;
-
-    char str[20];
-    std::string ret;
-
-    sprintf(str,
-            "%ld",
-            nowTime);
-    ret = str;
-    return ret;
-}
-std::string getTime()
-{
-    time_t nowTime;
-    time(&nowTime);
-
-    nowTime = nowTime + 8 * 3600;
-
-    tm * t = gmtime(&nowTime);
-
-    std::string ret;
-    char str[100];
-
-    sprintf(str,
-            "%d-%02d-%02d %02d:%02d:%02d\n",
-            t->tm_year + 1900,
-            t->tm_mon + 1,
-            t->tm_mday,
-            t->tm_hour,
-            t->tm_min,
-            t->tm_sec);
-    ret = str;
-    return ret;
-}
-
 long getClock()
 {
     struct timeval tv;
     gettimeofday(&tv,NULL);
     return tv.tv_sec*1000 + tv.tv_usec/1000;
-}
-
-
-void print()
-{
-    printf("tid=%lu\n", xchange::thread::CurrentThread::getThreadInfo().tid());
-}
-
-void printString(const std::string& str)
-{
-    std::cout << str;
-    usleep(100*1000);
 }
 
 struct msg
@@ -93,13 +37,13 @@ const int length = 20;
 
 const int count = 1230;
 
-const int workItemCount = 1000000;
+const int workItemCount = 100;
 
 
 struct bigPacket
 {
     int msgCount;
-    char * buf = new char[msgSize * count];
+    char buf[msgSize * count];
 };
 
 void* calcString(void *arg)
@@ -126,6 +70,7 @@ void test_threadpool(int maxSize)
 
     long m_time = getClock();
     double temp = 0;
+    int count = 0;
     struct bigPacket * packet = new struct bigPacket();
     packet->msgCount = count;
     for(int i = 0; i < count; ++i){
@@ -133,22 +78,28 @@ void test_threadpool(int maxSize)
         ptr->param1 = temp++;
         memset(ptr->str1,'7',length);
         memcpy(packet->buf + i * msgSize, ptr, msgSize);
+        delete ptr;
     }
 
     for (int i = 0; i < workItemCount; ++i)
     {
-        pool.execute(new Task(calcString, packet));
+        Task *task = new Task(calcString, packet, true);
+        pool.execute(task);
     }
     std::cout << "WORK DONE -----> : " << getClock() - m_time << std::endl;
 
     while(1) {
         ThreadPool::checkResult();
-        if (pool.getStatus().busyThread == 0) {
+
+        ThreadPool::Status s = pool.getStatus();
+        if (s.busyThread == 0 && s.unhandledTask == 0) {
+            // handle pengind signal
+            ThreadPool::checkResult();
             break;
         }
     }
 
-    pool.terminate();
+    delete packet;
 }
 
 

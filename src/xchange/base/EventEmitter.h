@@ -13,7 +13,7 @@ namespace xchange {
             typedef std::function<void (T, void*)> EventHandler;
             typedef std::vector<EventHandler> HandlerList;
 
-            EventEmitter() {};
+            EventEmitter():hasEventHandler_(false) {};
             ~EventEmitter() {};
 
             void on(T e, EventHandler callback) {
@@ -23,6 +23,7 @@ namespace xchange {
                     HandlerList *list = new HandlerList();
 
                     if (callback != NULL) {
+                        hasEventHandler_ = true;
                         list->push_back(callback);
                     }
 
@@ -31,6 +32,7 @@ namespace xchange {
                     HandlerList *list = iter->second;
 
                     if (callback != NULL) {
+                        hasEventHandler_ = true;
                         list->push_back(callback);
                     }
                 }
@@ -47,7 +49,10 @@ namespace xchange {
                     }
                 }
             };
+
+            bool hasEventHandler() const {return hasEventHandler_;}
         protected:
+            bool hasEventHandler_;
             std::map<T, HandlerList *> events_;
     };
 }

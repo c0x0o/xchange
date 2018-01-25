@@ -33,7 +33,7 @@ namespace algorithm {
                 tail_.store(oldQueue.tail_.load(std::memory_order_relaxed), std::memory_order_relaxed);
             }
             ~LockFreeQueue() {
-                delete queue_;
+                delete[] queue_;
             }
 
             uint64_t size() const {
@@ -110,7 +110,7 @@ namespace algorithm {
                 tail_.store(oldQueue.tail_.load(std::memory_order_relaxed), std::memory_order_relaxed);
             }
             ~LockFreeQueueSP() {
-                delete queue_;
+                delete[] queue_;
             }
 
             uint64_t size() const {

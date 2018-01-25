@@ -27,18 +27,22 @@ namespace xchange {
                 typedef enum {UNKNOWN = 0, INIT, RUNNING, COMPLETE} Status;
                 typedef std::shared_ptr<Task> ptr;
 
-                Task(routine, void *arg = NULL);
+                Task(routine, void *arg = NULL, bool recycle = false);
                 ~Task() {};
 
                 Task::id getId() const {return taskId_;}
                 void* getResult() const {return result_;}
                 Task::Status getStatus() const {return status_;}
+                // automatically use 'delete' on task, related to 'recycle' in constructor
+                // if you don't want to manage memory of Task yourself
+                bool needRecycle() const {return recycle_;}
 
                 void* run();
                 void* operator()() {return run();};
             private:
                 static std::atomic<uint64_t> usableId_;
 
+                bool recycle_;
                 const id taskId_;
                 Status status_;
                 routine main_;
@@ -59,7 +63,7 @@ namespace xchange {
 
                 void kill();
                 void restart();
-                int addTask(Task *task);
+                int addTask(Task *taskp);
 
                 friend void *workerMain(void *);
             private:
