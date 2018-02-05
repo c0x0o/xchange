@@ -75,6 +75,7 @@ namespace xchange {
 
         class ThreadPool : xchange::Noncopyable, public xchange::EventEmitter<ThreadPoolEvent> {
             public:
+                typedef std::shared_ptr<ThreadPool> ptr;
                 struct Status {
                     Status(uint64_t a, uint64_t b, uint64_t c, uint64_t d)
                         : totalThread(a),

@@ -22,7 +22,5 @@ int main(void) {
 
     cout << "a[1]=" << a[1] << endl;
 
-    (new Buffer())->destroy();
-
     return 0;
 }

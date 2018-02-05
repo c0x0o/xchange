@@ -3,6 +3,7 @@
 
 #include <stdexcept>
 #include <vector>
+#include <functional>
 
 #include <xchange/base/EventEmitter.h>
 
@@ -58,7 +59,7 @@ namespace algorithm {
 
             uint32_t size() const {return length_;}
 
-            void each(void (*fn)(Value, Key)) {
+            void each(std::function<void (Value, Key)> fn) {
                 std::vector<Node *> stack;
                 Node *current = root_;
 

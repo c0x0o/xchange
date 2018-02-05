@@ -23,9 +23,9 @@ namespace io {
             ~Buffer();
 
             uint8_t operator[](uint64_t pos) const {return *(data_+pos);};
+            uint8_t get(uint64_t pos) const {return data_[pos];};
             Buffer operator+(const Buffer &buff) const;
             Buffer& operator+=(const Buffer &buff);
-            uint8_t get(uint64_t pos) const {return data_[pos];};
             Buffer slice(uint64_t pos, uint64_t len) const;
 
 
@@ -41,28 +41,27 @@ namespace io {
                 return temp;
             }
 
-            void destroy() {delete this;};
-
-            uint64_t size() const {return size_;};
-            const uint8_t *data() const {return data_;};
+            uint64_t size() const {return size_;}
+            bool empty() const {return data_ == NULL;}
+            const uint8_t *data() const {return data_;}
             uint8_t *expose() {return data_;};
 
             friend std::ostream & operator<<(std::ostream &out, Buffer &buff) {
                 if (buff.size_ == 0) {
-                    return out << "(empty Buffer)";
+                    return out;
                 }
 
-                out << buff.data();
+                out.write((char *)buff.data_, buff.size_);
 
                 return out;
             }
 
             friend std::ostream & operator<<(std::ostream &out, Buffer &&buff) {
                 if (buff.size_ == 0) {
-                    return out << "(empty Buffer)";
+                    return out;
                 }
 
-                out << buff.data();
+                out.write((char *)buff.data_, buff.size_);
 
                 return out;
             }
