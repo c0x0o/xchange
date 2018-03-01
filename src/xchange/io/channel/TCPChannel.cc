@@ -53,6 +53,10 @@ Buffer TCPChannel::read(uint64_t size) {
             // EPIPE may caused by shutdown
             if (errno == EAGAIN || errno == EWOULDBLOCK || errno == EPIPE) {
                 readable_ = false;
+
+                if (errno == EPIPE) {
+                    eof_ = true;
+                }
             } else {
                 readable_ = false;
                 writeable_ = false;
@@ -70,9 +74,8 @@ Buffer TCPChannel::read(uint64_t size) {
         nleft -= ret;
     }
 
-    Buffer buffer(buff, nread);
-
-    delete []buff;
+    Buffer buffer;
+    buffer.own(buff, nread);
 
     return buffer;
 }

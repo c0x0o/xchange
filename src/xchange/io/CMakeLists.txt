@@ -3,6 +3,7 @@ set(IO_SOURCE
     "./Buffer.cc"
     "./Cache.cc"
     "./EventLoop.cc"
+    "./channel/FSChannel.cc"
     "./channel/TCPChannel.cc"
     "./channel/PTCPChannel.cc"
     "./poller/EpollPoller.cc")
@@ -14,6 +15,7 @@ set(IO_HEADER
     "./Channel.h"
     "./EventLoop.h"
     "./Poller.h"
+    "./channel/FSChannel.h"
     "./channel/TCPChannel.h"
     "./channel/PTCPChannel.h"
     "./poller/EpollPoller.h")

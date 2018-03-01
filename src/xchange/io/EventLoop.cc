@@ -64,6 +64,10 @@ void EventLoop::runInEveryTick(const LoopItem &item) {
 int EventLoop::loop() {
     if (running_.load(std::memory_order_relaxed)) return 0;
 
+    if (!pool_->running()) {
+        pool_->start();
+    }
+
     running_.store(true, std::memory_order_relaxed);
 
     while (running_.load(std::memory_order_release)) {
