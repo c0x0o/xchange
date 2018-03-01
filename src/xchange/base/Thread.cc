@@ -84,7 +84,7 @@ int Thread::kill() {
 }
 
 int Thread::sendMessage(void *arg) {
-    return kill(SIGUSR1, new ThreadMessage(tid_, arg));
+    return kill(SIGTRDMSG, new ThreadMessage(tid_, arg));
 }
 
 void* Thread::join() {
@@ -107,7 +107,7 @@ void Thread::detach() {
 ThreadData::ThreadData() {
     sigset_t set;
     sigemptyset(&set);
-    sigaddset(&set, SIGUSR1);
+    sigaddset(&set, SIGTRDMSG);
     pthread_sigmask(SIG_BLOCK, &set, NULL);
 
     mainid_ = pthread_self();
@@ -177,14 +177,14 @@ int CurrentThread::sendMessage(Thread::id target, void *msg) {
     union sigval val;
 
     val.sival_ptr = msg;
-    return pthread_sigqueue(target, SIGUSR1, val);
+    return pthread_sigqueue(target, SIGTRDMSG, val);
 }
 
 ThreadMessage::ptr CurrentThread::receiveMessage(double timeout) {
     sigset_t set;
     siginfo_t info;
     sigemptyset(&set);
-    sigaddset(&set, SIGUSR1);
+    sigaddset(&set, SIGTRDMSG);
 
     while (1) {
         int ret;

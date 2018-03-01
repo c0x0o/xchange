@@ -22,11 +22,9 @@ Task::Task(Task::routine fn, void *arg, bool recycle)
 void* Task::run() {
     if (status_ != INIT) return NULL;
 
-    emit(TaskEvent::TASK_START, NULL);
     status_ = RUNNING;
     result_ = main_(arg_);
     status_ = COMPLETE;
-    emit(TaskEvent::TASK_COMPLETE, result_);
 
     return result_;
 }
@@ -37,13 +35,14 @@ void *xchange::threadPool::workerMain(void *arg) {
     sigset_t set;
     siginfo_t info;
     sigemptyset(&set);
-    sigaddset(&set, SIGUSR2);
+    sigaddset(&set, SIGTASK);
 
     while (1) {
         if (worker.queueSize() == 0) {
             sigwaitinfo(&set, &info);
         }
 
+        worker.busy_.store(true, std::memory_order_release);
         while (1) {
             try {
                 Task* taskp = worker.tasks_.shift();
@@ -51,15 +50,13 @@ void *xchange::threadPool::workerMain(void *arg) {
                 if (bool(taskp)) {
                     union sigval val;
 
-                    worker.busy_ = true;
                     taskp->run();
-                    worker.busy_ = false;
 
                     val.sival_ptr = taskp;
 
                     // no signal will be sent if no handlers bind to task
                     if (taskp->hasEventHandler()) {
-                        pthread_sigqueue(CurrentThread::getThreadInfo().mainid(), SIGUSR2, val);
+                        pthread_sigqueue(CurrentThread::getThreadInfo().mainid(), SIGTASK, val);
                     } else {
                         if (taskp->needRecycle()) {
                             delete taskp;
@@ -70,6 +67,7 @@ void *xchange::threadPool::workerMain(void *arg) {
                 break;
             }
         }
+        worker.busy_.store(false, std::memory_order_release);
     }
 
     return NULL;
@@ -83,7 +81,7 @@ Worker::Worker(uint64_t queueSize)
 
     sigset_t set;
     sigemptyset(&set);
-    sigaddset(&set, SIGUSR2);
+    sigaddset(&set, SIGTASK);
     pthread_sigmask(SIG_BLOCK, &set, NULL);
 
     thread_.detach();
@@ -110,16 +108,18 @@ void Worker::restart() {
 int Worker::addTask(Task *taskptr) {
     int ret = 0;
 
-    taskptr->emit(TaskEvent::TASK_START, NULL);
+    taskptr->emit(TaskEvent::TASK_START, taskptr);
     try {
         tasks_.push(taskptr);
     } catch(const std::exception &err) {
-        ret = 1;
+        return 1;
     }
 
-    union sigval val;
-    val.sival_ptr = NULL;
-    pthread_sigqueue(thread_.tid(), SIGUSR2, val);
+    if (!busy()) {
+        union sigval val;
+        val.sival_ptr = NULL;
+        ret = pthread_sigqueue(thread_.tid(), SIGTASK, val);
+    }
 
     return ret;
 }
@@ -147,7 +147,7 @@ void ThreadPool::checkResult() {
 
     sigset_t set;
     sigemptyset(&set);
-    sigaddset(&set, SIGUSR2);
+    sigaddset(&set, SIGTASK);
 
     struct timespec t;
     t.tv_sec = 0;
@@ -230,9 +230,7 @@ int ThreadPool::execute(Task *ptr) {
         return -1;
     }
 
-    workers_[which]->addTask(ptr);
-
-    return 0;
+    return workers_[which]->addTask(ptr);
 }
 
 void ThreadPool::maintain() {

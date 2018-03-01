@@ -21,14 +21,16 @@ using xchange::threadPool::TASK_COMPLETE;
 
 std::atomic_uint64_t counter;
 
-void* taskMain(void *) {
+void* taskMain(void *str) {
     counter.fetch_add(1);
 
-    return NULL;
+    return str;
 }
 
-void outputResult(TaskEvent, void *str) {
-    cout << "output: " << *static_cast<std::string *>(str) << endl;
+void outputResult(TaskEvent, void *p) {
+    Task * taskp = static_cast<Task *>(p);
+
+    cout << "output: " << *(std::string *)taskp->getResult() << endl;
 }
 
 void onStarup(ThreadPoolEvent, void *) {
@@ -41,7 +43,7 @@ void onDestroy(ThreadPoolEvent, void *) {
 
 int main(void) {
     ThreadPool pool;
-    std::string a = "TaskA", b = "TaskB", c = "TaskC";
+    std::string a("TaskA"), b("TaskB"), c("TaskC");
 
     pool.on(POOL_INIT, onStarup);
     pool.on(POOL_TERMINATE, onDestroy);
@@ -61,7 +63,18 @@ int main(void) {
     pool.execute(&taskB);
     pool.execute(&taskC);
 
-    pause();
+    while (1) {
+        const ThreadPool::Status &stat = pool.getStatus();
+
+        ThreadPool::checkResult();
+
+        if (stat.busyThread == 0 && stat.unhandledTask == 0) {
+            ThreadPool::checkResult();
+            break;
+        }
+    }
+
+    cout << counter << endl;
 
     return 0;
 }

@@ -15,6 +15,8 @@
 #include <xchange/base/EventEmitter.h>
 #include <xchange/algorithm/LockFreeQueue.h>
 
+#define SIGTASK (SIGRTMAX-2)
+
 namespace xchange {
     namespace threadPool {
         enum TaskEvent {TASK_START, TASK_COMPLETE};
@@ -57,7 +59,7 @@ namespace xchange {
                 Worker(uint64_t queueSize);
                 ~Worker();
 
-                bool busy() const {return busy_;}
+                bool busy() const {return busy_.load(std::memory_order_relaxed);}
                 bool alive();
                 bool queueSize() const {return tasks_.size();}
 
@@ -67,7 +69,7 @@ namespace xchange {
 
                 friend void *workerMain(void *);
             private:
-                bool busy_;
+                std::atomic<bool> busy_;
                 uint64_t maxSize_;
                 xchange::algorithm::LockFreeQueueSP<Task *> tasks_;
                 xchange::thread::Thread thread_;

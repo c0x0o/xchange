@@ -37,7 +37,7 @@ const int length = 20;
 
 const int count = 1230;
 
-const int workItemCount = 100;
+const int workItemCount = 10000000;
 
 
 struct bigPacket
@@ -83,8 +83,12 @@ void test_threadpool(int maxSize)
 
     for (int i = 0; i < workItemCount; ++i)
     {
+        int ret = 0;
         Task *task = new Task(calcString, packet, true);
-        pool.execute(task);
+        ret = pool.execute(task);
+        if (ret != 0) {
+            std::cout << "excute failed: " << ret << std::endl;
+        }
     }
     std::cout << "WORK DONE -----> : " << getClock() - m_time << std::endl;
 
@@ -96,6 +100,8 @@ void test_threadpool(int maxSize)
             // handle pengind signal
             ThreadPool::checkResult();
             break;
+        } else {
+            std::cout << "current busyThread and unhandledTask: " << s.busyThread << " " << s.unhandledTask << std::endl;
         }
     }
 
@@ -111,6 +117,6 @@ int main()
     //test(10);
     //test(50);
 
-    test_threadpool(1000);
+    test_threadpool(10000);
 
 }

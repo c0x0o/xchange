@@ -14,6 +14,8 @@
 #include <xchange/design/Singleton.h>
 #include <xchange/base/EventEmitter.h>
 
+#define SIGTRDMSG (SIGRTMAX-1)
+
 namespace xchange {
     namespace thread {
         enum ThreadEvent {SUCCESS = 0, INIT = 1, COMPLETE = 2, ERROR = 3};
