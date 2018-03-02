@@ -3,10 +3,10 @@
 using xchange::io::channel::TCPChannel;
 using xchange::io::Buffer;
 
-TCPChannel *TCPChannel::createTCPChannel(
+TCPChannel *TCPChannel::connect(
         int af_family,
-        const struct sockaddr *addr,
-        uint64_t socklen)
+        const struct sockaddr *peer, uint64_t peerlen,
+        const struct sockaddr *host, uint64_t hostlen)
 {
     int fd = ::socket(af_family, SOCK_STREAM, 0);
     int ret;
@@ -15,24 +15,35 @@ TCPChannel *TCPChannel::createTCPChannel(
         return NULL;
     }
 
-    ret = ::bind(fd, addr, socklen);
-    if (ret < 0) {
+    if (host != NULL) {
+        ret = ::bind(fd, host, hostlen);
+        if (ret < 0) {
+            ::close(fd);
+            return NULL;
+        }
+    }
+
+    ret = ::connect(fd, peer, peerlen);
+    if (ret != 0) {
         ::close(fd);
         return NULL;
     }
 
-    return new TCPChannel(fd, addr, socklen);
+    return new TCPChannel(fd, peer, peerlen);
 }
 
 TCPChannel::TCPChannel(
         int fd,
-        const struct sockaddr *addr,
+        const struct sockaddr *peer,
         uint64_t socklen)
     :Channel(IN | ERROR, false, true, false),
     fd_(fd)
 {
-    memset(&addr_, 0, sizeof(addr_));
-    memcpy(&addr_, addr, socklen);
+    socklen_t len = sizeof(struct sockaddr_storage);
+    memset(&peer_, 0, len);
+    memcpy(&peer_, peer, socklen);
+
+    ::getsockname(fd, (struct sockaddr *)&host_, &len);
 }
 
 Buffer TCPChannel::read(uint64_t size) {
@@ -67,6 +78,7 @@ Buffer TCPChannel::read(uint64_t size) {
 
         if (ret == 0) {
             eof_ = true;
+            readable_ = false;
             break;
         }
 

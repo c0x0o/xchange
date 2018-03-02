@@ -41,6 +41,7 @@ namespace channel {
             virtual void setReadStatus(bool status) {readable_ = status;}
             virtual void setWriteStatus(bool status) {writeable_ = status;}
             virtual void setErrorStatus(bool status) {error_ = status;}
+            virtual void setEofStatus(bool status) {eof_ = status;}
         protected:
             int events_;
             bool readable_;

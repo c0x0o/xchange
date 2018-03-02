@@ -77,7 +77,7 @@ int EventLoop::loop() {
         poller_->poll(0);
 
         // collect LoopItem in pendingQueue_
-        for (uint64_t currentSize = onceQueue_.size();
+        for (uint64_t currentSize = pendingQueue_.size();
                 currentSize > 0;
                 currentSize--) {
             stableQueue_.push_back(pendingQueue_.shift());

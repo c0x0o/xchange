@@ -61,7 +61,7 @@ namespace io {
             const uint8_t *data() const {return data_.get();}
             uint8_t *expose() {return data_.get();};
 
-            friend std::ostream & operator<<(std::ostream &out, Buffer &buff) {
+            friend std::ostream & operator<<(std::ostream &out, const Buffer &buff) {
                 if (buff.size_ == 0) {
                     return out;
                 }
@@ -71,7 +71,7 @@ namespace io {
                 return out;
             }
 
-            friend std::ostream & operator<<(std::ostream &out, Buffer &&buff) {
+            friend std::ostream & operator<<(std::ostream &out, const Buffer &&buff) {
                 if (buff.size_ == 0) {
                     return out;
                 }

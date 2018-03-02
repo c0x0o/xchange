@@ -68,6 +68,7 @@ int EpollPoller::poll(uint64_t timeoutMs) {
 
         if (events[i].events & EPOLLERR || events[i].events & EPOLLPRI) {
             channel->setErrorStatus(true);
+            channel->setEofStatus(true);
 
             if (channel->hasEvent(ChannelEvent::ERROR)) {
                 channel->emit(ChannelEvent::ERROR, channel);
